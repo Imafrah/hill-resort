@@ -1,0 +1,187 @@
+// Prisma schema for Misty Peaks Estate - Hill Resort Booking System
+// Database: SQLite (zero-ops, single file)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ─── Room Types ───────────────────────────────────────────────────────────────
+
+model RoomType {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  slug           String   @unique
+  description    String
+  shortDesc      String   @default("")
+  baseRate       Float    // Base weekday rate in INR
+  weekendRate    Float    // Weekend rate (Fri-Sun) in INR
+  maxGuests      Int
+  totalInventory Int      // Physical rooms/villas of this type
+  bedType        String   @default("King")
+  sizeSqFt       Int      @default(400)
+  amenities      String   // JSON array of amenity strings
+  photos         String   // JSON array of photo URLs
+  category       String   @default("room") // "room" or "villa"
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  dailyInventory DailyInventory[]
+  bookings       Booking[]
+}
+
+// ─── Daily Inventory & Rates ──────────────────────────────────────────────────
+
+model DailyInventory {
+  id            String   @id @default(cuid())
+  roomTypeId    String
+  date          String   // ISO date string YYYY-MM-DD
+  rate          Float    // Rate for this specific date
+  webAllotment  Int      // Rooms allocated for website sale
+  booked        Int      @default(0) // Rooms booked on website
+  isBlackout    Boolean  @default(false) // No web sales on this date
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  roomType RoomType @relation(fields: [roomTypeId], references: [id])
+
+  @@unique([roomTypeId, date])
+  @@index([date])
+  @@index([roomTypeId, date])
+}
+
+// ─── Bookings ─────────────────────────────────────────────────────────────────
+
+model Booking {
+  id            String   @id @default(cuid())
+  bookingId     String   @unique // Human-readable: BK-XXXXXX
+  guestName     String
+  email         String
+  phone         String
+  roomTypeId    String
+  checkIn       String   // ISO date YYYY-MM-DD
+  checkOut      String   // ISO date YYYY-MM-DD
+  nights        Int
+  adults        Int      @default(2)
+  children      Int      @default(0)
+  specialReq    String   @default("")
+  
+  // Pricing
+  roomCharges   Float    // Sum of nightly rates
+  discount      Float    @default(0)
+  taxableAmount Float
+  gstRate       Float    // 0.12 or 0.18
+  gstAmount     Float
+  totalAmount   Float
+  
+  // Promo
+  promoCodeId   String?
+  promoCode     PromoCode? @relation(fields: [promoCodeId], references: [id])
+  
+  // Payment (simulated)
+  paymentId     String?  // Stripe-like test payment ID
+  paymentStatus String   @default("pending") // pending, paid, refunded
+  
+  // Status
+  status        String   @default("confirmed") // confirmed, cancelled, checked_in, checked_out
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  roomType RoomType @relation(fields: [roomTypeId], references: [id])
+
+  @@index([checkIn])
+  @@index([status])
+  @@index([bookingId])
+}
+
+// ─── Promo Codes ──────────────────────────────────────────────────────────────
+
+model PromoCode {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  description   String   @default("")
+  discountType  String   // "percentage" or "flat"
+  discountValue Float    // Percentage (0-100) or flat amount in INR
+  validFrom     String   // ISO date
+  validTo       String   // ISO date
+  roomTypeId    String?  // null = applies to all room types
+  maxUses       Int      @default(100)
+  usedCount     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bookings Booking[]
+}
+
+// ─── Enquiries ────────────────────────────────────────────────────────────────
+
+model Enquiry {
+  id              String   @id @default(cuid())
+  enquiryId       String   @unique // Human-readable: ENQ-XXXX
+  
+  // Source
+  source          String   // "web_form", "email", "whatsapp", "phone"
+  guestName       String   @default("")
+  guestEmail      String   @default("")
+  guestPhone      String   @default("")
+  message         String
+  
+  // Event-specific fields (for structured form)
+  eventType       String?  // "wedding", "corporate_offsite", "social_event", "other"
+  eventDateFrom   String?  // ISO date
+  eventDateTo     String?  // ISO date
+  expectedGuests  Int?
+  estimatedBudget String?
+  requirements    String?  // Additional requirements text
+  
+  // AI Classification
+  category        String   @default("general") // wedding, room_booking, corporate_offsite, complaint, general
+  confidence      Float    @default(0)
+  isLowConfidence Boolean  @default(false)
+  
+  // AI Extraction
+  extractedDates  String   @default("[]") // JSON array
+  extractedGuests Int?
+  extractedBudget String?
+  
+  // Assignment
+  assignedTo      String   @default("General Manager")
+  alertGM         Boolean  @default(false)
+  
+  // AI Draft
+  aiDraft         String   @default("")
+  
+  // Status
+  status          String   @default("new") // new, in_progress, replied, closed
+  staffNotes      String   @default("")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@index([assignedTo])
+}
+
+// ─── Staff ────────────────────────────────────────────────────────────────────
+
+model Staff {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String   @default("")
+  role      String   // "gm", "reservations_manager", "sales_manager", "front_office"
+  title     String   // Display title
+  password  String   // Hashed password (for admin login)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
