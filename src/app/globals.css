@@ -1,26 +1,56 @@
 @import "tailwindcss";
 
+/* ─── Misty Peaks Estate Design Tokens ──────────────────────────────── */
+
+@theme {
+  --color-forest: #1B3A2D;
+  --color-forest-light: #2D5A45;
+  --color-forest-dark: #0F2219;
+  --color-coffee: #6B4226;
+  --color-gold: #C9A96E;
+  --color-gold-light: #DFC99A;
+  --color-cream: #FAFAF7;
+  --color-cream-dark: #F0EDE6;
+  --color-mist: #E8E6E0;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --forest: #1B3A2D;
+  --forest-light: #2D5A45;
+  --forest-dark: #0F2219;
+  --coffee: #6B4226;
+  --gold: #C9A96E;
+  --gold-light: #DFC99A;
+  --cream: #FAFAF7;
+  --cream-dark: #F0EDE6;
+  --mist: #E8E6E0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--cream);
+  color: #1a1a1a;
 }
+
+h1, h2, h3 {
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background-color: var(--gold-light);
+  color: var(--forest-dark);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--cream); }
+::-webkit-scrollbar-thumb { background: var(--mist); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--coffee); }
