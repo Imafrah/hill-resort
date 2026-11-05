@@ -2,9 +2,9 @@
 ## Misty Peaks Estate — Direct-Booking Website & AI Enquiry Routing Engine
 
 **Client:** Company A, Chikkamagaluru, Karnataka  
-**GitHub Repository:** [https://github.com/YOUR_GITHUB_USERNAME/hill-resort](https://github.com/YOUR_GITHUB_USERNAME/hill-resort) *(Replace with your GitHub repository link)*  
-**Live Application URL:** [http://localhost:3000](http://localhost:3000) *(or your deployed production link)*  
-**Author:** Candidate (Software Engineering Take-Home Submission)  
+**GitHub Repository:** [https://github.com/Imafrah/hill-resort](https://github.com/Imafrah/hill-resort)  
+**Live Application URL:** [http://localhost:3000](http://localhost:3000)  
+**Author:** Engineering Candidate (Take-Home Submission)  
 **Date:** November 2026  
 **Status:** Complete & Verified  
 

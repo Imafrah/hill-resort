@@ -14,7 +14,7 @@ This guide provides instructions for running the project locally, details demo r
 
 ### Step 1: Clone the Repository & Navigate to Directory
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/hill-resort.git
+git clone https://github.com/Imafrah/hill-resort.git
 cd hill-resort
 ```
 
@@ -126,7 +126,7 @@ docker run -p 3000:3000 -v $(pwd)/prisma:/app/prisma hill-resort
 2. Clone repository to `/var/www/hill-resort`, install dependencies, and build:
    ```bash
    cd /var/www
-   git clone https://github.com/YOUR_GITHUB_USERNAME/hill-resort.git
+   git clone https://github.com/Imafrah/hill-resort.git
    cd hill-resort
    npm install
    npx prisma generate && npx prisma db push && npx tsx prisma/seed.ts
