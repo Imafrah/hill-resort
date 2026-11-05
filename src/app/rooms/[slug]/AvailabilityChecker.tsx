@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils';
-import { Calendar, Users, Loader2, AlertCircle } from 'lucide-react';
+import { Calendar, Users, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface Props {
   roomTypeId: string;
@@ -98,7 +98,10 @@ export default function AvailabilityChecker({ roomTypeId, roomSlug, roomName, ma
         <div className="mt-6 pt-6 border-t border-stone-200">
           {result.available ? (
             <>
-              <p className="text-sm text-green-700 font-medium mb-4">✓ Available for {result.nights} night{result.nights > 1 ? 's' : ''}</p>
+              <p className="text-sm text-emerald-800 font-medium mb-4 flex items-center">
+                <CheckCircle className="w-4 h-4 text-emerald-600 mr-1.5 shrink-0" />
+                Available for {result.nights} night{result.nights > 1 ? 's' : ''}
+              </p>
               <div className="space-y-1.5 mb-4">
                 {result.nightlyRates.map((nr) => (
                   <div key={nr.date} className="flex justify-between text-xs text-gray-500">
