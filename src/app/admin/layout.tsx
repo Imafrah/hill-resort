@@ -28,12 +28,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const [currentStaff, setCurrentStaff] = useState<StaffUser | null>(null);
 
-  // If on login page, render children directly without admin sidebar
-  if (pathname === '/admin/login') {
-    return <>{children}</>;
-  }
-
   useEffect(() => {
+    if (pathname === '/admin/login') return;
+
     async function checkAuth() {
       try {
         const res = await fetch('/api/admin/auth');
@@ -62,7 +59,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
     }
     checkAuth();
-  }, []);
+  }, [pathname]);
 
   async function handleLogout() {
     try {
@@ -70,6 +67,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } finally {
       router.push('/admin/login');
     }
+  }
+
+  // Render without admin shell if on login page (AFTER all hooks have executed)
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
   }
 
   return (
