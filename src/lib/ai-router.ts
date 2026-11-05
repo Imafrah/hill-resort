@@ -203,6 +203,15 @@ function extractDates(message: string): string[] {
 }
 
 function extractGuestCount(message: string): number | null {
+  // Check for combined adults and children, e.g. "2 adults and a child" or "2 adults and 2 children"
+  const adultChildMatch = message.match(/(\d+)\s+adults?\s*(?:and|&|\+)\s*(\d+|a|an|one)\s+child(?:ren)?/i);
+  if (adultChildMatch) {
+    const adults = parseInt(adultChildMatch[1], 10);
+    const childStr = adultChildMatch[2].toLowerCase();
+    const children = (childStr === 'a' || childStr === 'an' || childStr === 'one') ? 1 : parseInt(childStr, 10);
+    return adults + children;
+  }
+
   const patterns = [
     /(\d+)\s*(?:guests?|people|persons?|pax|members?|attendees?)/i,
     /(?:team|group|party)\s+of\s+(\d+)/i,

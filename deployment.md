@@ -1,244 +1,170 @@
-# Deployment Guide
-## Misty Peaks Estate — Direct-Booking Website & AI Enquiry Routing Engine
+# Deployment & Local Run Guide
+## Misty Peaks Estate — Direct-Booking Platform & AI Enquiry Engine
 
-This guide provides step-by-step instructions for deploying the **Misty Peaks Estate** web application to production across three common environments:
-1. **Option 1: Vercel (Recommended & Fastest)**
-2. **Option 2: Docker Container (Render / Fly.io / AWS ECS / GCP Cloud Run)**
-3. **Option 3: Self-Hosted Linux VPS (Ubuntu / Debian with PM2 + Nginx)**
+This guide provides instructions for running the project locally, details demo reviewer credentials, lists the required environment variable names, and explains production deployment options.
 
 ---
 
-## 1. Environment Variables Configuration
+## 1. How to Run Locally (Step by Step)
 
-Create a `.env.production` (or configure in your cloud host's Environment Variables dashboard):
+### Prerequisites
+- **Node.js**: v18.18+ or v20+ LTS installed
+- **npm**: v9+ or v10+ installed
+- **Git**
 
-```env
-# Node Environment
-NODE_ENV="production"
-
-# Database Connection (Default: local SQLite database file)
-DATABASE_URL="file:./dev.db"
-
-# Optional: Set this if you wish to enable live Gemini 1.5 Flash LLM routing.
-# If omitted or left empty, the application automatically runs the built-in local NLP engine.
-GEMINI_API_KEY=""
-
-# Public Application URL (Used for canonical links & redirects)
-NEXT_PUBLIC_APP_URL="https://mistypeaks.yourdomain.com"
-```
-
----
-
-## 2. Option 1: Deploying to Vercel (Recommended)
-
-Vercel is the native hosting platform for Next.js and provides instant deployment with global edge CDN caching.
-
-### Step 1: Push Code to GitHub
-Ensure all code is committed and pushed to your GitHub repository:
+### Step 1: Clone the Repository & Navigate to Directory
 ```bash
-git add .
-git commit -m "feat: production-ready hill resort booking platform"
-git push origin main
+git clone https://github.com/YOUR_GITHUB_USERNAME/hill-resort.git
+cd hill-resort
 ```
 
-### Step 2: Database Strategy on Vercel
-Because Vercel Serverless Functions have an ephemeral filesystem, if you use Vercel Serverless, choose one of these two database approaches:
+### Step 2: Install Dependencies
+```bash
+npm install
+```
 
-#### Approach A: Managed PostgreSQL (Recommended for Serverless)
-1. Provision a free PostgreSQL database on [Supabase](https://supabase.com) or [Neon](https://neon.tech).
-2. In [`prisma/schema.prisma`](prisma/schema.prisma), change the datasource provider:
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
-   ```
-3. Set `DATABASE_URL` in your Vercel project environment settings to your Supabase/Neon connection string (e.g. `postgresql://user:pass@ep-xyz.neon.tech/neondb?sslmode=require`).
+### Step 3: Initialize Database & Seed Realistic Sample Data
+This command generates the Prisma client, pushes the SQLite schema, and seeds:
+- 76 physical keys (64 rooms + 12 villas across 6 room types)
+- 540 daily inventory allotment records across 90 days
+- 4 staff role profiles
+- 4 active promo codes
+- Benchmark enquiries including ENQ-4410, ENQ-4411, ENQ-4412, ENQ-4413, and ENQ-4414
 
-#### Approach B: SQLite on Vercel
-For evaluation demos, Prisma SQLite works out of the box when packaged with the build. Run the seed script as part of your build command.
+```bash
+npx prisma generate
+npx prisma db push
+npx tsx prisma/seed.ts
+```
 
-### Step 3: Configure Vercel Project
-1. Log in to [Vercel](https://vercel.com) and click **Add New Project**.
-2. Import your GitHub repository (`hill-resort`).
-3. Set the build settings:
+### Step 4: Run Automated Verification Tests
+Run the core test suite to verify the statutory GST tiers (12% vs 18%), benchmark AI classifications, entity extraction, and domain invariants:
+```bash
+npm test
+```
+*Expected output: `TEST RESULTS: 35 PASSED, 0 FAILED`.*
+
+### Step 5: Start the Development Server
+```bash
+npm run dev
+```
+
+### Step 6: Open in Your Browser
+Open [http://localhost:3000](http://localhost:3000) to view:
+- **Guest Booking Website**: `http://localhost:3000/`
+- **Room Details & Availability**: `http://localhost:3000/rooms/deluxe-room`
+- **Wedding & Event Planner**: `http://localhost:3000/enquiry`
+- **Staff Sign-in Page**: `http://localhost:3000/admin/login`
+- **Staff Operations & Inbox**: `http://localhost:3000/admin` and `http://localhost:3000/admin/inbox`
+
+---
+
+## 2. Demo Reviewer Sign-In Credentials
+
+The application includes role-based access control. Reviewers can log in at:
+**URL:** [http://localhost:3000/admin/login](http://localhost:3000/admin/login)
+
+> **Convenience Feature**: The `/admin/login` page includes **1-Click Quick Login** buttons for all four staff roles. Reviewers can click any role button to sign in instantly without typing.
+
+| Role | Email | Password | Access & Responsibilities |
+|---|---|---|---|
+| **General Manager (GM)** | `gm@mistypeaks.in` | `admin123` | Full administrative oversight, Unsorted Inbox Lane review, high-priority complaint alerts, master allotment controls. |
+| **Reservations Manager** | `reservations@mistypeaks.in` | `admin123` | Room rate calendar, website allotment quotas, room booking enquiries (`room_booking`), PMS booking exports. |
+| **Sales Manager** | `sales@mistypeaks.in` | `admin123` | High-value event enquiries (`wedding`, `corporate_offsite`), banquet lawn and conference hall bookings. |
+| **Front Office Manager** | `frontdesk@mistypeaks.in` | `admin123` | Guest check-ins, Form C verification at physical reception, complaint resolution (`complaint`). |
+
+---
+
+## 3. Required Environment Variables (Names Only)
+
+As required by the assignment guidelines, only variable names are listed below (never values or secrets):
+
+- `NODE_ENV`
+- `DATABASE_URL`
+- `GEMINI_API_KEY`
+- `NEXT_PUBLIC_APP_URL`
+
+*Note on AI Operation:* The application operates in dual mode. If `GEMINI_API_KEY` is omitted or left empty, the application automatically uses its built-in local NLP heuristic engine (<5ms, zero external dependencies, zero API costs).
+
+---
+
+## 4. Production Cloud Deployment Options
+
+### Option 1: Vercel (Recommended & Fastest)
+1. Push the repository to GitHub.
+2. In [Vercel](https://vercel.com), click **Add New Project** and import the repository.
+3. Configure Build Settings:
    - **Framework Preset**: Next.js
    - **Build Command**: `npx prisma generate && npx prisma db push && npx tsx prisma/seed.ts && next build`
    - **Output Directory**: `.next`
    - **Install Command**: `npm install`
-4. Click **Deploy**.
+4. Set Environment Variables in Vercel project dashboard:
+   - `DATABASE_URL` (SQLite file or hosted PostgreSQL connection string such as Neon / Supabase)
+   - `NEXT_PUBLIC_APP_URL` (Your production domain)
+   - `GEMINI_API_KEY` (Optional)
+5. Click **Deploy**.
 
----
-
-## 3. Option 2: Docker / Container Deployment
-
-Deploying via Docker is ideal for platforms with persistent storage (e.g. **Fly.io**, **Render**, **Railway**, **AWS ECS**, or **GCP Cloud Run**).
-
-### Step 1: Create `Dockerfile` in Project Root
-
-```dockerfile
-# Multi-stage production Dockerfile
-FROM node:20-alpine AS base
-
-# Step 1: Install dependencies
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-
-COPY package.json package-lock.json ./
-RUN npm ci
-
-# Step 2: Build application
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
-# Generate Prisma client and build Next.js
-RUN npx prisma generate
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
-
-# Step 3: Production runner
-FROM base AS runner
-WORKDIR /app
-
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/prisma ./prisma
-
-USER nextjs
-
-EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-CMD ["node_modules/.bin/next", "start"]
-```
-
-### Step 2: Build & Run Docker Locally
+### Option 2: Docker Container (Render / Fly.io / AWS ECS / GCP Cloud Run)
+Use the multi-stage Docker build provided in the repository:
 ```bash
-# Build the Docker image
+# Build Docker image
 docker build -t hill-resort .
 
-# Run the container mapping port 3000
+# Run container mapping port 3000
 docker run -p 3000:3000 -v $(pwd)/prisma:/app/prisma hill-resort
 ```
 
----
-
-## 4. Option 3: Self-Hosted Linux VPS (Ubuntu / Debian)
-
-This setup uses Node 20, PM2 process manager, SQLite on persistent SSD, and Nginx with Let's Encrypt SSL.
-
-### Step 1: Server Provisioning
-On your Ubuntu 22.04 / 24.04 LTS instance:
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y git curl nginx certbot python3-certbot-nginx
-
-# Install Node.js 20 LTS
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
-sudo npm install -g pm2
-```
-
-### Step 2: Clone and Build Project
-```bash
-# Clone to /var/www
-cd /var/www
-git clone https://github.com/YOUR_GITHUB_USERNAME/hill-resort.git
-cd hill-resort
-
-# Install dependencies and build
-npm install
-npx prisma generate
-npx prisma db push
-npx tsx prisma/seed.ts
-npm run build
-```
-
-### Step 3: Start with PM2
-```bash
-# Start background process
-pm2 start npm --name "hill-resort" -- start
-
-# Save PM2 process list to restart automatically on reboot
-pm2 save
-pm2 startup
-```
-
-### Step 4: Configure Nginx Reverse Proxy
-Create `/etc/nginx/sites-available/mistypeaks.conf`:
-```nginx
-server {
-    listen 80;
-    server_name mistypeaks.yourdomain.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-Enable site and restart Nginx:
-```bash
-sudo ln -s /etc/nginx/sites-available/mistypeaks.conf /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-### Step 5: Enable SSL with Let's Encrypt
-```bash
-sudo certbot --nginx -d mistypeaks.yourdomain.com
-```
+### Option 3: Self-Hosted Linux VPS (Ubuntu / Debian with PM2 + Nginx)
+1. Provision Ubuntu 22.04 / 24.04 LTS instance with Node.js 20 LTS and Nginx:
+   ```bash
+   sudo apt update && sudo apt upgrade -y
+   sudo apt install -y git curl nginx certbot python3-certbot-nginx
+   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+   sudo apt install -y nodejs
+   sudo npm install -g pm2
+   ```
+2. Clone repository to `/var/www/hill-resort`, install dependencies, and build:
+   ```bash
+   cd /var/www
+   git clone https://github.com/YOUR_GITHUB_USERNAME/hill-resort.git
+   cd hill-resort
+   npm install
+   npx prisma generate && npx prisma db push && npx tsx prisma/seed.ts
+   npm run build
+   ```
+3. Start application with PM2:
+   ```bash
+   pm2 start npm --name "hill-resort" -- start
+   pm2 save
+   pm2 startup
+   ```
+4. Configure Nginx reverse proxy pointing port 80/443 to `http://127.0.0.1:3000` and issue SSL certificates with Let's Encrypt:
+   ```bash
+   sudo certbot --nginx -d mistypeaks.yourdomain.com
+   ```
 
 ---
 
-## 5. Post-Deployment Verification & Smoke Tests
+## 5. Post-Deployment Verification & Smoke Test Checklist
 
-After deployment, perform these 5 verification checks:
+After deployment or local setup, verify the following core flows:
 
-1. **Homepage Check**:
-   - Visit `https://your-domain.com/` and ensure all 6 room types render with pictures, starting rates, and proper GST labels (+12% or +18%).
-2. **Booking Concurrency Test**:
-   - Navigate to `/rooms/deluxe-room`, select dates, and proceed through checkout to confirmation.
-   - Verify that booking ID `BK-XXXXXX` is created.
-3. **Admin Dashboard & CSV Export**:
-   - Navigate to `/admin`.
-   - Click **Export CSV** and verify that the downloaded file contains the new reservation record.
-4. **Allotment Management**:
-   - Navigate to `/admin/rates` and confirm the 14-day calendar grid loads with room allotments and rates.
-5. **AI Enquiry Pipeline**:
-   - Navigate to `/admin/inbox`.
-   - Click **Simulate Incoming Enquiry** $\rightarrow$ Click *Sister's Wedding (250 pax)* $\rightarrow$ Submit.
-   - Verify it appears in the inbox categorized under **Wedding** and assigned to the **Sales Manager**.
-
----
-
-## 6. Backup & Recovery
-
-- **SQLite Database**: The database is stored at `prisma/dev.db`. Set up a daily cron job to back up this file:
-  ```bash
-  sqlite3 /var/www/hill-resort/prisma/dev.db ".backup '/var/backups/hill-resort-$(date +\%F).db'"
-  ```
-- **Prisma Migrations**: For production schema updates:
-  ```bash
-  npx prisma db push
-  ```
-
+1. **Homepage Check (`/`)**:
+   Ensure all 6 room types load with photos, base tariffs, key specs, and statutory GST notices.
+2. **Availability & Pricing Calculation (`/rooms/[slug]`)**:
+   Select check-in and check-out dates; verify accurate rate calculation and proper GST tier (12% if tariff <= ₹7,500, else 18%).
+3. **End-to-End Direct Booking Flow (`/booking`)**:
+   Complete Step 1 (Dates), Step 2 (Guest Details), and Step 3 (Test Payment). Verify instant confirmation with booking ID `BK-XXXXXX`.
+4. **Allotment Matrix & Overbooking Prevention (`/admin/rates`)**:
+   Log in as Reservations Manager or GM. Inspect the 14-day allotment matrix and verify that rooms decrement upon booking.
+5. **AI Enquiry Routing & Simulation (`/admin/inbox`)**:
+   Open the inbox. Click **+ Simulate Incoming Enquiry**, select the pre-filled *Sister's Wedding (250 pax)* benchmark, and click **Submit Simulation**.
+   Verify that:
+   - Category is classified as **Wedding**.
+   - Confidence score is calculated.
+   - Assigned owner is **Sales Manager**.
+   - Extracted guest count is **250**.
+   - AI pre-drafted reply uses official rate tables without hallucinating prices.
+   - Draft is marked as unsent pending human review.
+6. **PMS Booking CSV Export (`/admin`)**:
+   Click **Export PMS CSV** on the Admin dashboard and verify that the downloaded CSV contains the reservation data formatted for the property management system.
