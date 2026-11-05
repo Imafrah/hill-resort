@@ -1,133 +1,153 @@
-# Misty Peaks Estate — Direct-Booking Website with AI Enquiry Routing
+# Misty Peaks Estate — Direct-Booking Website & AI Enquiry Router
 
-> **Candidate Take-Home Assignment Submission**  
-> **Client:** Company A, Chikkamagaluru, Karnataka  
-> **Property:** 76-key coffee-estate resort (64 rooms + 12 villas) on 200 acres with lawns for weddings & offsites.  
-> **Business Impact:** Recovers ₹1.05 crore/year by shifting agency share from 12% to 20% (+₹33.3 lakh) and eliminating slow enquiry response drop-offs (+₹72 lakh).
+**Candidate Technical Assessment**  
+**Client:** Company A, Chikkamagaluru, Karnataka  
+**Scope:** 76-key coffee-estate resort (64 rooms, 12 villas) on 200 acres with event lawns.  
+**Business Impact:** ₹1.05 crore annual savings target (₹33.3 lakh via direct-booking shift from 12% to 20%; ₹72 lakh by eliminating response delays on wedding and offsite enquiries).  
 
----
-
-## 🌟 Architecture & Engineering Highlights
-
-1. **Deterministic Allotment Control (Zero Overbooking)**:
-   - Prevents selling agency-allotted inventory.
-   - Every booking executes within a serialized database transaction (`prisma.$transaction`) that verifies real-time stock across every single night before confirming.
-2. **Dual-Mode AI Enquiry Router**:
-   - **Zero-Dependency Mode (Default)**: Fast (<5ms), resilient local NLP engine combining weighted keyword scoring, entity heuristics, and regex parsers. Runs 100% reliably out of the box with **no API keys required**.
-   - **Live LLM Mode (Optional)**: Automatically activates if `GEMINI_API_KEY` is set in `.env.local` to leverage Gemini 1.5 Flash for natural language processing, with automatic fallback to the local engine on timeout or failure.
-3. **AI Safety & Policy Guardrails**:
-   - **Never Auto-Send**: All draft replies require human review.
-   - **No Hallucinated Pricing**: Room rates in drafts are strictly injected from the database rate table.
-   - **GM Alerting**: Guest complaints immediately trigger a high-priority GM alert badge.
-   - **Unsorted Lane**: Low-confidence classifications (<0.65) route to the General Manager.
-   - **1-Click Re-routing**: Staff can reassign any enquiry in a single click.
-4. **Statutory & Hill-Station Design**:
-   - **Dynamic GST Engine**: Automatic 12% tax slab for tariffs $\le ₹7,500$ (Deluxe Room) and 18% for tariffs $> ₹7,500$ (Premium, Suites, Villas).
-   - **DPDP Act 2023 & Form C**: Guest privacy notices and explicit check-in collection for foreign passports.
-   - **Performance**: High-contrast, lightweight layout designed for slow hill-station bandwidth.
+**Supplementary Documentation:**
+- [Technical Design Document](TECHNICAL_DESIGN.md)
+- [Production Deployment Guide](deployment.md)
 
 ---
 
-## 📱 The 8 Core Screens Delivered
+## 1. Project Overview & Business Value
 
-### Guest Experience (4 Screens)
-- **Screen 1: Home & Estate Showcase (`/`)** — Hero scenery, plantation story, 6 room & villa types (64 rooms + 12 villas = 76 keys), transparent pricing with GST breakdown, "Book Direct" value strip.
-- **Screen 2: Room Detail & Live Availability (`/rooms/[slug]`)** — Photo gallery, room specs, interactive check-in/out date checker with per-night rate breakdown + GST preview.
-- **Screen 3: 3-Step Checkout & Confirmation (`/booking`)** — 3-step checkout: dates → room → confirm. Promo code support, simulated test payment, Form C notice, DPDP Act 2023 compliance. Instant confirmation summary with reference ID.
-- **Screen 4: Weddings & Events Planner (`/enquiry`)** — Structured form for weddings & corporate offsites: date range, guest count, estimated budget, specific requirements (mandap, AV, lawn setups).
+Company A operates a 76-key coffee-estate resort in the Western Ghats of Chikkamagaluru, Karnataka. The business model currently suffers from two major inefficiencies:
+1. **High OTA Commissions:** 68% of room nights flow through online travel agencies at 18–22% commission. Increasing direct bookings by 15% recovers ₹33.3 lakh annually.
+2. **Event Enquiry Bottlenecks:** Approximately 90 event enquiries arrive monthly across disjointed channels (WhatsApp, email, web forms). Over 30% wait longer than 24 hours for a response, resulting in an estimated 3 lost events monthly at ₹2 lakh contribution (₹72 lakh annually).
 
-### Staff & GM Operations (4 Screens)
-- **Screen 5: Bookings Dashboard & PMS Export (`/admin`)** — Today's arrivals/departures, total revenue, filterable booking log, and **1-click Daily Booking CSV Export** for the legacy reservation system.
-- **Screen 6: Daily Rates & Allotment Grid (`/admin/rates`)** — 14-day calendar matrix across all 76 keys. Set daily dynamic rates, website allotment caps, and blackout dates. Prevents allotment from going below booked keys.
-- **Screen 7: Promo Code Manager (`/admin/promos`)** — Manage flat and percentage discount codes (`DIRECTFIRST`, `COFFEE15`, `LONGSTAY3K`, `WEDDING2027`) with usage tracking and validity periods.
-- **Screen 8: AI Unified Enquiry Inbox (`/admin/inbox`)** — Unified inbox for web forms, forwarded emails, and simulated WhatsApp. Real-time AI classification, entity extraction, owner assignment, and draft reply generator.
+This project delivers a high-performance direct-booking web application paired with an automated AI enquiry classification and routing engine.
 
 ---
 
-## 🚀 Quick Start (Running Locally)
+## 2. Core Architecture & Engineering Decisions
+
+### 2.1 Concurrency-Controlled Allotment Engine
+- **Overbooking Prevention:** Direct website allotment (`webAllotment`) is strictly partitioned from agency allocations.
+- **Transaction Isolation:** Bookings execute inside a serialized database transaction (`prisma.$transaction`). Availability is validated across every individual night of the requested date range before confirming inventory or recording payment.
+- **Atomic Decrement:** Inventory availability cannot be decremented below zero, eliminating race conditions.
+
+### 2.2 Dual-Mode AI Enquiry Router
+- **Default In-Engine NLP (Zero Dependency):** A deterministic, sub-5ms classification and extraction pipeline using weighted domain dictionaries, entity heuristics, and regex parsers. Runs out of the box with zero third-party API dependencies or costs.
+- **Optional LLM Integration:** Automatically activates Google Gemini 1.5 Flash when `GEMINI_API_KEY` is present in `.env.local`. If an external call times out (>4s) or encounters network failure, it fails over seamlessly to the local engine.
+
+### 2.3 Policy Guardrails & Human-in-the-Loop Safeguards
+- **Mandatory Review:** Draft replies are generated for review only; automated sending is disabled by design.
+- **Rate Integrity:** Room rates are never hallucinated; pricing in drafts is referenced from the rate table.
+- **Unsorted Lane for Ambiguity:** Classifications with confidence scores below 0.65 are tagged as Low Confidence and routed to the General Manager.
+- **Escalation Rules:** Guest complaints automatically trigger high-priority GM alerts.
+- **Single-Click Reassignment:** Staff can re-route any enquiry between departments in one click.
+
+### 2.4 Statutory Compliance
+- **Dynamic GST Engine:** Applies statutory Indian hospitality slabs: 12% for room tariffs up to ₹7,500; 18% for tariffs exceeding ₹7,500. Displayed transparently as `₹Base + ₹GST = ₹Total`.
+- **DPDP Act 2023:** Data collection is minimal and transparent, with privacy notices across booking steps and footers.
+- **Form C Protocol:** Foreign passport details are taken at physical check-in only, avoiding online storage of sensitive travel documents.
+
+---
+
+## 3. Screen Directory
+
+The application comprises 8 core screens divided across guest and administrative workflows:
+
+### Guest Experience
+- **Home & Room Showcase (`/`):** Hero landscape imagery, estate overview, 6 room and villa categories (76 keys total), transparent pricing with tax breakdown, and Book Direct incentives.
+- **Room Detail & Live Availability (`/rooms/[slug]`):** Photo galleries, amenity listings, and real-time interactive calendar checker with night-by-night pricing.
+- **Three-Step Checkout & Confirmation (`/booking`):** Linear 3-step checkout (Dates -> Room -> Payment & Confirmation), promo code validation, mock payment gateway, and printable confirmation vouchers.
+- **Weddings & Events Form (`/enquiry`):** Structured intake for weddings and corporate retreats, capturing guest counts (up to 300), date ranges, budgets, and operational requirements.
+
+### Operations & Management
+- **Bookings Dashboard & PMS Export (`/admin`):** Real-time arrival and departure counts, revenue metrics, filterable reservation ledger, and single-click daily CSV export for legacy PMS integration.
+- **Rates & Allotment Matrix (`/admin/rates`):** 14-day calendar grid enabling dynamic daily rate adjustments, allotment allocation, and blackout toggles. Prevents allotment reduction below confirmed bookings.
+- **Promo Code Manager (`/admin/promos`):** Management interface for percentage and flat discount codes, setting validity windows and usage thresholds.
+- **Unified Enquiry Inbox (`/admin/inbox`):** Consolidated queue for all inbound channels with AI metadata tags, entity extraction summaries, drafted replies, and an interactive simulation modal.
+
+---
+
+## 4. Local Setup & Execution
 
 ### Prerequisites
-- Node.js 18+ (Node 20+ recommended)
+- Node.js 18.x or 20.x
 - npm or pnpm
 
-### 1. Install Dependencies
+### Step 1: Install Dependencies
 ```bash
 npm install
 ```
 
-### 2. Initialize Database & Seed Sample Data
+### Step 2: Database Setup & Seeding
 ```bash
 npx prisma db push
 npx tsx prisma/seed.ts
 ```
 
-> **What the seed loads:**
-> - 6 Room Types totaling 76 keys (28 Deluxe, 24 Premium, 12 Suites, 6 Coffee Planter's Villas, 4 Heritage Villas, 2 Presidential Villas).
-> - 540 Daily inventory records across 90 days.
-> - 4 Active staff accounts (GM, Reservations Manager, Sales Manager, Front Office Manager).
-> - 4 Promo codes (`DIRECTFIRST`, `COFFEE15`, `LONGSTAY3K`, `WEDDING2027`).
-> - The sample enquiries from the brief (`ENQ-4410`, `ENQ-4411`, `ENQ-4412`, plus complaint and edge-case samples).
+The seed script loads:
+- 6 Room Types totaling 76 keys (28 Deluxe Rooms, 24 Premium Rooms, 12 Suites, 6 Coffee Planter's Villas, 4 Heritage Villas, 2 Presidential Villas).
+- 540 Daily inventory records spanning 90 days.
+- 4 Staff user profiles (General Manager, Reservations Manager, Sales Manager, Front Office Manager).
+- 4 Active promotional codes (`DIRECTFIRST`, `COFFEE15`, `LONGSTAY3K`, `WEDDING2027`).
+- Seeded benchmark enquiries (`ENQ-4410` through `ENQ-4417`).
 
-### 3. Run Development Server
+### Step 3: Run the Development Server
 ```bash
 npm run dev
 ```
-Open **[http://localhost:3000](http://localhost:3000)** in your browser.
+
+Access the application at `http://localhost:3000`.
 
 ---
 
-## 🧪 Testing the AI Enquiry Routing
+## 5. Verification & Test Scenarios
 
-Navigate to **[`http://localhost:3000/admin/inbox`](http://localhost:3000/admin/inbox)** and click the **`Simulate Incoming Enquiry`** button in the top right.
+To test the AI Enquiry Router, navigate to `http://localhost:3000/admin/inbox` and click **Simulate Incoming Enquiry**.
 
-### Built-in Test Scenarios:
-
-| Preset Scenario | Incoming Message | AI Output & Verification |
+| Test Scenario | Sample Input Message | Expected Router Output |
 |---|---|---|
-| **Sister's Wedding (250 pax)** | *"Venue for my sister's wedding in Feb 2027, about 250 guests, 2 nights"* | ➜ Classified as **Wedding** (92%)<br>➜ Assigned to **Sales Manager**<br>➜ Extracted: 250 guests, Feb 2027<br>➜ Tailored draft reply asking for lawn vs. hall preferences |
-| **Family Villa Request** | *"Is a villa free 14-16 Nov for 2 adults and a child?"* | ➜ Classified as **Room booking** (85%)<br>➜ Assigned to **Reservations Manager**<br>➜ Extracted: 3 guests, 14–16 Nov |
-| **Corporate Offsite (45 pax)** | *"Team of 45 wants a January offsite with a conference hall"* | ➜ Classified as **Corporate offsite** (88%)<br>➜ Assigned to **Sales Manager**<br>➜ Extracted: 45 guests, January |
-| **Guest Complaint** | *"The AC in villa 3 stopped working at midnight and water leaked on the bed..."* | ➜ Classified as **Complaint** (95%)<br>➜ Assigned to **Front Office**<br>➜ **🔴 GM Alert Triggered** |
-| **Ambiguous Enquiry** | *"Hi, please send pictures and brochure."* | ➜ Classified as **General** (35%)<br>➜ **🟡 Low Confidence / GM Unsorted Lane** |
-
-*(You can also type any custom message in the modal and submit it live).*
+| **Wedding Enquiry** | *"Venue for my sister's wedding in Feb 2027, about 250 guests, 2 nights"* | Category: Wedding (Confidence > 0.85)<br>Assigned: Sales Manager<br>Extracted: 250 guests, Feb 2027<br>Draft: Tailored wedding venue proposal request |
+| **Room Reservation** | *"Is a villa free 14-16 Nov for 2 adults and a child?"* | Category: Room Booking (Confidence > 0.80)<br>Assigned: Reservations Manager<br>Extracted: 3 guests, 14–16 Nov<br>Draft: Villa availability and rate confirmation |
+| **Corporate Offsite** | *"Team of 45 wants a January offsite with a conference hall"* | Category: Corporate Offsite (Confidence > 0.85)<br>Assigned: Sales Manager<br>Extracted: 45 guests, January<br>Draft: Conference package and breakout options |
+| **Guest Complaint** | *"The AC in villa 3 stopped working at midnight and water leaked on the bed..."* | Category: Complaint (Confidence > 0.85)<br>Assigned: Front Office Manager<br>Flag: GM Alert Triggered<br>Draft: Prioritized management apology and resolution |
+| **Ambiguous Message** | *"Hi, please send pictures and brochure."* | Category: General (Confidence < 0.65)<br>Assigned: General Manager<br>Flag: Low Confidence / Unsorted Lane |
 
 ---
 
-## ⚙️ Environment Variables (Optional)
+## 6. Configuration (Optional)
 
-Create a `.env.local` file in the project root if you wish to enable the optional live LLM mode:
+To enable live Gemini LLM integration, create a `.env.local` file:
 
 ```env
-# Optional: If omitted, the fast, zero-dependency local NLP engine runs automatically
+# Optional: If omitted, the system defaults to the deterministic local NLP engine
 GEMINI_API_KEY="your-gemini-api-key"
 ```
 
 ---
 
-## 📁 Project Structure
+## 7. Repository Structure
 
 ```
 ├── prisma/
-│   ├── schema.prisma       # Database schema (RoomType, DailyInventory, Booking, Enquiry, Staff, PromoCode)
-│   ├── seed.ts             # Seeds 76 keys, 90-day inventory, sample enquiries & promos
-│   └── dev.db              # SQLite development database
+│   ├── schema.prisma       # Database schema definition
+│   ├── seed.ts             # 76-key inventory and baseline seed data
+│   └── dev.db              # SQLite development database file
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx                    # Screen 1: Home & room showcase
-│   │   ├── rooms/[slug]/page.tsx       # Screen 2: Room detail & availability
-│   │   ├── booking/                    # Screen 3: 3-step checkout & payment
-│   │   ├── enquiry/page.tsx            # Screen 4: Structured wedding/event form
+│   │   ├── page.tsx                    # Screen 1: Home & Accommodation Showcase
+│   │   ├── rooms/[slug]/page.tsx       # Screen 2: Room Detail & Real-Time Availability
+│   │   ├── booking/                    # Screen 3: Three-Step Checkout & Confirmation
+│   │   ├── enquiry/page.tsx            # Screen 4: Structured Event Enquiry Form
 │   │   ├── admin/
-│   │   │   ├── page.tsx                # Screen 5: Bookings dashboard
-│   │   │   ├── rates/page.tsx          # Screen 6: Rates & allotment manager
-│   │   │   ├── promos/page.tsx         # Screen 7: Promo code manager
-│   │   │   └── inbox/page.tsx          # Screen 8: AI enquiry inbox & simulation modal
-│   │   └── api/                        # REST APIs with transaction isolation
+│   │   │   ├── page.tsx                # Screen 5: Bookings Dashboard & PMS Export
+│   │   │   ├── rates/page.tsx          # Screen 6: Rates & Allotment Matrix
+│   │   │   ├── promos/page.tsx         # Screen 7: Promo Code Manager
+│   │   │   └── inbox/page.tsx          # Screen 8: Unified AI Inbox & Simulator
+│   │   └── api/                        # Next.js Server Route Handlers
 │   ├── lib/
-│   │   ├── ai-router.ts    # Dual-mode AI classification, entity extraction & reply drafting
-│   │   ├── gst.ts          # Statutory 12% vs 18% GST calculation
-│   │   ├── prisma.ts       # Prisma Client singleton
-│   │   └── utils.ts        # Currency formatters, ID generators, date helpers
+│   │   ├── ai-router.ts    # Dual-mode AI classification and drafting logic
+│   │   ├── gst.ts          # Statutory GST tax calculation engine
+│   │   ├── prisma.ts       # Database client connection singleton
+│   │   └── utils.ts        # Formatting, currency, and date utilities
+│   └── components/         # Reusable UI components
+├── TECHNICAL_DESIGN.md     # Detailed Technical Design Document
+├── deployment.md           # Production deployment instructions
 └── README.md
 ```
