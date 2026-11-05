@@ -31,7 +31,7 @@ export default function GuestFooter() {
               <Link href="/#rooms" className="hover:text-white transition-colors">Rooms & Villas</Link>
               <Link href="/enquiry" className="hover:text-white transition-colors">Weddings & Events</Link>
               <Link href="/#about" className="hover:text-white transition-colors">The Estate</Link>
-              <Link href="/admin" className="hover:text-white transition-colors">Staff Login</Link>
+              <Link href="/admin/login" className="hover:text-white transition-colors">Staff Login</Link>
             </nav>
           </div>
           <div>
